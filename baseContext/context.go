@@ -236,7 +236,7 @@ func (ctx *Context) BaseError(err error) (e *baseError.Error) {
 		console += fmt.Sprintf("%+v", err)
 		ctx.Application().Logger().Error(console)
 	}
-	return baseError.New(ctx.ErrorCodes["System"], err.Error(), baseError.WithCause(err), baseError.WithSystem())
+	return baseError.WrapCode(ctx.ErrorCodes["System"], err, baseError.WithSystem())
 }
 
 func (ctx *Context) Error(err error, data ...interface{}) {

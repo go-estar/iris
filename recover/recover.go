@@ -2,10 +2,10 @@ package recover
 
 import (
 	"fmt"
+	baseError "github.com/go-estar/base-error"
 	"github.com/go-estar/config"
 	"github.com/go-estar/iris/baseContext"
 	"github.com/kataras/iris/v12"
-	"github.com/pkg/errors"
 	"reflect"
 )
 
@@ -24,9 +24,9 @@ func Recover() func(ctx *baseContext.Context) {
 				var e error
 				switch err.(type) {
 				case error:
-					e = errors.WithStack(err.(error))
+					e = baseError.WrapCode(ctx.ErrorCodes["System"], err.(error), baseError.WithSystem(), baseError.WithStack(6))
 				default:
-					e = errors.New(fmt.Sprint(err))
+					e = baseError.New(ctx.ErrorCodes["System"], fmt.Sprint(err), baseError.WithSystem(), baseError.WithStack(6))
 				}
 
 				if ctx.Env != config.Production.String() {
