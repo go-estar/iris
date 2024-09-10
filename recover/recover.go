@@ -24,9 +24,9 @@ func Recover() func(ctx *baseContext.Context) {
 				var e error
 				switch err.(type) {
 				case error:
-					e = baseError.WrapCode(ctx.ErrorCodes["System"], err.(error), baseError.WithSystem(), baseError.WithStack(6))
+					e = baseError.NewSystemCodeWrap(ctx.ErrorCodes["System"], err.(error), baseError.WithStack(6))
 				default:
-					e = baseError.New(ctx.ErrorCodes["System"], fmt.Sprint(err), baseError.WithSystem(), baseError.WithStack(6))
+					e = baseError.NewSystemCode(ctx.ErrorCodes["System"], fmt.Sprint(err), baseError.WithStack(6))
 				}
 
 				if ctx.Env != config.Production.String() {

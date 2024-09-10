@@ -53,10 +53,10 @@ func Trace(ctx *baseContext.Context) {
 		//fmt.Println("traceId", span.Context().(jaeger.SpanContext).TraceID())
 		//fmt.Println("parentId", span.Context().(jaeger.SpanContext).ParentID())
 		//fmt.Println("spanId", span.Context().(jaeger.SpanContext).SpanID())
-		traceCtx = opentracing.ContextWithSpan(context.WithValue(context.Background(), "x-request-id", requestId), span)
+		traceCtx = opentracing.ContextWithSpan(traceCtx, span)
 	}
 
 	ctx.SetTraceCtx(traceCtx)
-	//ctx.ResetRequest(r.WithContext(traceCtx))
+	//ctx.ResetRequest(ctx.Request().WithContext(traceCtx))
 	ctx.Next()
 }

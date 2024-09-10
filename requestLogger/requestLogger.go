@@ -301,7 +301,7 @@ func (l *RequestLogger) Log(ctx *baseContext.Context) {
 			if !e.System {
 				level = "warn"
 			}
-			if e.Chain != "" {
+			if len(e.Chain) > 0 {
 				fields = append(fields, l.logger.Field("error_chain", e.Chain))
 			}
 		}

@@ -39,7 +39,7 @@ type Response interface {
 	WithMessage(message string) Response
 	WithData(data ...interface{}) Response
 	WithSystem() Response
-	WithChain(chain string) Response
+	WithChain(chain ...string) Response
 	WithRid(rid string) Response
 	ContentType() string
 	Content() interface{}
@@ -162,7 +162,7 @@ func (ctx *Context) JSONReqBody(p interface{}) error {
 	}
 	if reflect.TypeOf(p).Kind() == reflect.Struct || (reflect.TypeOf(p).Kind() == reflect.Ptr && reflect.TypeOf(p).Elem().Kind() == reflect.Struct) {
 		if err := validate.Validate.Struct(p); err != nil {
-			return baseError.WrapCode(ctx.ErrorCodes["Validation"], err)
+			return baseError.NewCodeWrap(ctx.ErrorCodes["Validation"], err)
 		}
 	}
 	return nil
@@ -174,7 +174,7 @@ func (ctx *Context) JSONReqForm(p interface{}) error {
 	}
 	if reflect.TypeOf(p).Kind() == reflect.Struct || (reflect.TypeOf(p).Kind() == reflect.Ptr && reflect.TypeOf(p).Elem().Kind() == reflect.Struct) {
 		if err := validate.Validate.Struct(p); err != nil {
-			return baseError.WrapCode(ctx.ErrorCodes["Validation"], err)
+			return baseError.NewCodeWrap(ctx.ErrorCodes["Validation"], err)
 		}
 	}
 	return nil
@@ -207,6 +207,9 @@ func (ctx *Context) BaseError(err error) (e *baseError.Error) {
 	//baseError
 	if errorType == "*baseError.Error" {
 		e = err.(*baseError.Error)
+		if e.Code == "" {
+			e.WithCode(ctx.ErrorCodes["System"])
+		}
 		if e.System || e.Stack() != nil {
 			if ctx.Env != config.Production.String() {
 				console := fmt.Sprintf("Error: %s\n", errorType)
@@ -220,12 +223,12 @@ func (ctx *Context) BaseError(err error) (e *baseError.Error) {
 	//参数校验失败
 	if errorType == "*json.SyntaxError" || errorType == "validator.ValidationErrors" || errorType == "schema.MultiError" {
 		if errorType == "*json.SyntaxError" {
-			e = baseError.WrapCode(ctx.ErrorCodes["ReadParams"], err)
+			e = baseError.NewCodeWrap(ctx.ErrorCodes["ReadParams"], err)
 		} else if errorType == "validator.ValidationErrors" {
 			emap := err.(validator.ValidationErrors).Translate(validate.Validate.Trans)
-			e = baseError.WrapCode(ctx.ErrorCodes["Validation"], errors.New(fmt.Sprint(emap)))
+			e = baseError.NewCodeWrap(ctx.ErrorCodes["Validation"], errors.New(fmt.Sprint(emap)))
 		} else {
-			e = baseError.WrapCode(ctx.ErrorCodes["ReadParams"], err)
+			e = baseError.NewCodeWrap(ctx.ErrorCodes["ReadParams"], err)
 		}
 		return e
 	}
@@ -236,7 +239,7 @@ func (ctx *Context) BaseError(err error) (e *baseError.Error) {
 		console += fmt.Sprintf("%+v", err)
 		ctx.Application().Logger().Error(console)
 	}
-	return baseError.WrapCode(ctx.ErrorCodes["System"], err, baseError.WithSystem())
+	return baseError.NewCodeWrap(ctx.ErrorCodes["System"], err, baseError.WithSystem())
 }
 
 func (ctx *Context) Error(err error, data ...interface{}) {
@@ -253,8 +256,8 @@ func (ctx *Context) Error(err error, data ...interface{}) {
 	if e.System {
 		resp.WithSystem()
 	}
-	if e.Chain != "" {
-		resp.WithChain(e.Chain)
+	if len(e.Chain) > 0 {
+		resp.WithChain(e.Chain...)
 	}
 	if resp.ContentType() == "text" {
 		ctx.Text(resp.Content().(string))
@@ -373,14 +376,18 @@ func (ctx *Context) GetLogContextKeys() []string {
 	return nil
 }
 
-func (ctx *Context) GetTraceCtx() context.Context {
+func (ctx *Context) RequestCtx() context.Context {
+	return ctx.Request().Context()
+}
+
+func (ctx *Context) TraceCtx() context.Context {
 	if v := ctx.Values().Get("traceCtx"); v != nil {
 		traceCtx, ok := v.(context.Context)
 		if ok {
 			return traceCtx
 		}
 	}
-	return ctx
+	return context.Background()
 }
 
 func (ctx *Context) SetTraceCtx(traceCtx context.Context) {

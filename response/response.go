@@ -12,7 +12,7 @@ type Response struct {
 	Code    string      `json:"code"`
 	Message string      `json:"message"`
 	System  bool        `json:"system,omitempty"`
-	Chain   string      `json:"chain,omitempty"`
+	Chain   []string    `json:"chain,omitempty"`
 	Rid     interface{} `json:"rid,omitempty"`
 	Data    interface{} `json:"data,omitempty"`
 }
@@ -64,8 +64,8 @@ func (r *Response) WithSystem() baseContext.Response {
 	return r
 }
 
-func (r *Response) WithChain(chain string) baseContext.Response {
-	r.Chain = chain
+func (r *Response) WithChain(chain ...string) baseContext.Response {
+	r.Chain = append(r.Chain, chain...)
 	return r
 }
 
