@@ -37,7 +37,7 @@ func Trace(ctx *baseContext.Context) {
 		}
 		span := tracer.StartSpan(ctx.Request().URL.Path+":S:", opts...)
 		defer func() {
-			if err := ctx.Values().Get("error"); err != nil {
+			if err := ctx.GetErr(); err != nil {
 				if baseError.IsNotSystemError(err.(error)) {
 					span.LogFields(log.String("error", err.(error).Error()))
 				} else {
@@ -48,11 +48,13 @@ func Trace(ctx *baseContext.Context) {
 		}()
 
 		span.SetTag("x-request-id", requestId)
-		ctx.Values().Set("traceId", span.Context().(jaeger.SpanContext).TraceID())
-
-		//fmt.Println("traceId", span.Context().(jaeger.SpanContext).TraceID())
-		//fmt.Println("parentId", span.Context().(jaeger.SpanContext).ParentID())
-		//fmt.Println("spanId", span.Context().(jaeger.SpanContext).SpanID())
+		sc, ok := span.Context().(jaeger.SpanContext)
+		if ok {
+			ctx.Values().Set("traceId", sc.TraceID())
+			//fmt.Println("traceId", sc.TraceID())
+			//fmt.Println("parentId", sc.ParentID())
+			//fmt.Println("spanId", sc.SpanID())
+		}
 		traceCtx = opentracing.ContextWithSpan(traceCtx, span)
 	}
 

@@ -1,11 +1,11 @@
 package anyError
 
 import (
-	"errors"
+	"fmt"
+	baseError "github.com/go-estar/base-error"
 	"github.com/go-estar/iris/baseContext"
 	"github.com/kataras/iris/v12"
 	"net/http"
-	"strconv"
 )
 
 func New() iris.Handler {
@@ -14,13 +14,14 @@ func New() iris.Handler {
 
 func AnyError(ctx *baseContext.Context) {
 	text := http.StatusText(ctx.GetStatusCode())
-
-	if ctx.Values().Get("error") == nil {
-		ctx.Values().Set("error", errors.New(text))
+	var err = ctx.GetErr()
+	if err == nil {
+		err = baseError.New(fmt.Sprintf("%d %s", ctx.GetStatusCode(), text))
 	}
 	if ctx.GetContentTypeRequested() != "" {
-		ctx.JSON(ctx.Response.Error(strconv.Itoa(ctx.GetStatusCode()), text))
+		ctx.Error(err)
 	} else {
+		ctx.SetErr(err)
 		ctx.WriteString(text)
 	}
 	ctx.Logger.Log(ctx)

@@ -14,7 +14,6 @@ var contextPool = sync.Pool{New: func() interface{} {
 	return &Context{
 		Env:             baseContext.Env,
 		ApplicationName: baseContext.ApplicationName,
-		Internal:        baseContext.Internal,
 		Logger:          baseContext.Logger,
 		Response:        baseContext.Response,
 		ViewError:       baseContext.ViewError,
@@ -40,7 +39,20 @@ func Handler(h func(*Context)) iris.Handler {
 	}
 }
 
-func ReturnHandler(h func(*Context) (interface{}, error)) iris.Handler {
+func TypeHandler[T any](h func(*Context) (*T, error)) iris.Handler {
+	return func(original iris.Context) {
+		ctx := acquire(original)
+		data, err := h(ctx)
+		if err != nil {
+			ctx.Error(err, data)
+		} else {
+			ctx.Success(data)
+		}
+		release(ctx)
+	}
+}
+
+func AnyHandler(h func(*Context) (interface{}, error)) iris.Handler {
 	return func(original iris.Context) {
 		ctx := acquire(original)
 		data, err := h(ctx)
@@ -82,7 +94,7 @@ func call(ctx *Context, controller interface{}, methodName string) (data interfa
 	}
 }
 
-func ReflectHandler(controller interface{}, method string) iris.Handler {
+func RefAnyHandler(controller interface{}, method string) iris.Handler {
 	if reflect.ValueOf(controller).Kind() != reflect.Ptr {
 		panic("controller must be ptr")
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/go-estar/config"
 	localTime "github.com/go-estar/local-time"
 	"github.com/go-estar/logger"
+	"github.com/go-estar/types/fieldUtil"
 	"github.com/go-estar/types/jsonUtil"
 	"github.com/go-estar/validate"
 	"github.com/go-playground/validator/v10"
@@ -32,15 +33,13 @@ type Logger interface {
 }
 
 type Response interface {
-	New(code string, msg string, data ...interface{}) Response
-	Success(data ...interface{}) Response
-	Error(code string, msg string, data ...interface{}) Response
-	WithCode(code string) Response
-	WithMessage(message string) Response
-	WithData(data ...interface{}) Response
-	WithSystem() Response
-	WithChain(chain ...string) Response
-	WithRid(rid string) Response
+	Success() Response
+	SetCode(code string) Response
+	SetMessage(message string) Response
+	SetData(data interface{}) Response
+	SetSystem() Response
+	SetChain(chain ...string) Response
+	SetRid(rid string) Response
 	ContentType() string
 	Content() interface{}
 }
@@ -75,13 +74,7 @@ func WithApplicationName(val string) Option {
 	}
 }
 
-func WithInternal(val bool) Option {
-	return func(opts *Context) {
-		opts.Internal = val
-	}
-}
-
-func WithResponse(val Response) Option {
+func WithResponse(val NewResponse) Option {
 	return func(opts *Context) {
 		opts.Response = val
 	}
@@ -120,13 +113,14 @@ func WithValidationErrorCode(val string) Option {
 	}
 }
 
+type NewResponse func() Response
+
 type Context struct {
 	iris.Context
 	Env             string
 	ApplicationName string
-	Internal        bool
 	Logger          Logger
-	Response        Response
+	Response        NewResponse
 	ViewError       string
 	ErrorCodes      map[string]string
 }
@@ -179,18 +173,37 @@ func (ctx *Context) JSONReqForm(p interface{}) error {
 	}
 	return nil
 }
+func (ctx *Context) NewResponse(code string, message string, data ...interface{}) Response {
+	resp := ctx.Response().SetCode(code).SetMessage(message)
+	if len(data) > 0 && !fieldUtil.IsNil(data[0]) {
+		resp.SetData(data[0])
+	}
+	return resp
+}
 
-func (ctx *Context) NewResponse(code string, msg string, data ...interface{}) Response {
-	return ctx.Response.New(code, msg, data...)
+func (ctx *Context) NewSuccess(message string, data ...interface{}) Response {
+	resp := ctx.Response().Success().SetMessage(message)
+	if len(data) > 0 && !fieldUtil.IsNil(data[0]) {
+		resp.SetData(data[0])
+	}
+	return resp
 }
-func (ctx *Context) NewSuccess(data ...interface{}) Response {
-	return ctx.Response.Success(data...)
-}
-func (ctx *Context) Success(data ...interface{}) {
-	ctx.StopExecution()
-	resp := ctx.Response.Success(data...)
+
+func (ctx *Context) Success(data interface{}) {
+	if !ctx.IsStopped() {
+		ctx.StopExecution()
+	}
+	var resp Response
+	switch v := data.(type) {
+	case Response:
+		resp = v
+	}
+	if resp == nil {
+		resp = ctx.NewSuccess("", data)
+	}
+
 	if requestId := ctx.Values().GetString("requestId"); requestId != "" {
-		resp.WithRid(requestId)
+		resp.SetRid(requestId)
 	}
 	if resp.ContentType() == "text" {
 		ctx.Text(resp.Content().(string))
@@ -201,14 +214,60 @@ func (ctx *Context) Success(data ...interface{}) {
 	}
 }
 
+func (ctx *Context) Error(err error, data ...interface{}) {
+	if !ctx.IsStopped() {
+		ctx.StopExecution()
+	}
+	e := ctx.BaseError(err)
+	message := e.Msg
+	if e.System && ctx.Env == config.Production.String() {
+		message = "system error"
+	}
+	resp := ctx.NewResponse(e.Code, message, data...)
+	if requestId := ctx.Values().GetString("requestId"); requestId != "" {
+		resp.SetRid(requestId)
+	}
+	if e.System {
+		resp.SetSystem()
+	}
+	if len(e.Chain) > 0 {
+		resp.SetChain(e.Chain...)
+	}
+	if resp.ContentType() == "text" {
+		ctx.Text(resp.Content().(string))
+	} else if resp.ContentType() == "binary" {
+		ctx.Binary(resp.Content().([]byte))
+	} else {
+		ctx.JSON(resp.Content())
+	}
+}
+
+func (ctx *Context) ErrorView(err error, data ...interface{}) {
+	if !ctx.IsStopped() {
+		ctx.StopExecution()
+	}
+	e := ctx.BaseError(err)
+	message := e.Msg
+	if e.System && ctx.Env == config.Production.String() {
+		message = "system error"
+	}
+	if requestId := ctx.Values().GetString("requestId"); requestId != "" {
+		message += " rid:" + requestId
+	}
+	ctx.ViewData("Message", fmt.Sprintf("[%s]%s", e.Code, message))
+	ctx.View(ctx.ViewError)
+}
+
 func (ctx *Context) BaseError(err error) (e *baseError.Error) {
-	ctx.Values().Set("error", err)
+	if ctx.GetErr() == nil {
+		ctx.SetErr(err)
+	}
 	var errorType = reflect.TypeOf(err).String()
 	//baseError
 	if errorType == "*baseError.Error" {
 		e = err.(*baseError.Error)
 		if e.Code == "" {
-			e.WithCode(ctx.ErrorCodes["System"])
+			e.SetCode(ctx.ErrorCodes["System"])
 		}
 		if e.System || e.Stack() != nil {
 			if ctx.Env != config.Production.String() {
@@ -239,47 +298,7 @@ func (ctx *Context) BaseError(err error) (e *baseError.Error) {
 		console += fmt.Sprintf("%+v", err)
 		ctx.Application().Logger().Error(console)
 	}
-	return baseError.NewCodeWrap(ctx.ErrorCodes["System"], err, baseError.WithSystem())
-}
-
-func (ctx *Context) Error(err error, data ...interface{}) {
-	ctx.StopExecution()
-	e := ctx.BaseError(err)
-	message := e.Msg
-	if e.System && ctx.Env == config.Production.String() && !ctx.Internal {
-		message = "system error"
-	}
-	resp := ctx.Response.Error(e.Code, message, data...)
-	if requestId := ctx.Values().GetString("requestId"); requestId != "" {
-		resp.WithRid(requestId)
-	}
-	if e.System {
-		resp.WithSystem()
-	}
-	if len(e.Chain) > 0 {
-		resp.WithChain(e.Chain...)
-	}
-	if resp.ContentType() == "text" {
-		ctx.Text(resp.Content().(string))
-	} else if resp.ContentType() == "binary" {
-		ctx.Binary(resp.Content().([]byte))
-	} else {
-		ctx.JSON(resp.Content())
-	}
-}
-
-func (ctx *Context) ErrorView(err error, data ...interface{}) {
-	ctx.StopExecution()
-	e := ctx.BaseError(err)
-	message := e.Msg
-	if e.System && ctx.Env == config.Production.String() && !ctx.Internal {
-		message = "system error"
-	}
-	if requestId := ctx.Values().GetString("requestId"); requestId != "" {
-		message += " rid:" + requestId
-	}
-	ctx.ViewData("Message", fmt.Sprintf("[%s]%s", e.Code, message))
-	ctx.View(ctx.ViewError)
+	return baseError.NewSystemCodeWrap(ctx.ErrorCodes["System"], err)
 }
 
 func (ctx *Context) GetIP() string {

@@ -292,8 +292,7 @@ func (l *RequestLogger) Log(ctx *baseContext.Context) {
 		fields = append(fields, l.logger.Field("trace_id", traceId))
 	}
 
-	ctxErr := ctx.Values().Get("error")
-	if ctxErr != nil {
+	if ctxErr := ctx.GetErr(); ctxErr != nil {
 		fields = append(fields, l.logger.Field("error", ctxErr))
 		level := "error"
 		if reflect.TypeOf(ctxErr).String() == "*baseError.Error" {

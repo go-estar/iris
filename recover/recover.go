@@ -17,6 +17,9 @@ func Recover() func(ctx *baseContext.Context) {
 	return func(ctx *baseContext.Context) {
 		defer func() {
 			if err := recover(); err != nil {
+				if _, ok := ctx.IsRecovered(); ok {
+					return
+				}
 				if ctx.IsStopped() {
 					return
 				}
@@ -24,22 +27,17 @@ func Recover() func(ctx *baseContext.Context) {
 				var e error
 				switch err.(type) {
 				case error:
-					e = baseError.NewSystemCodeWrap(ctx.ErrorCodes["System"], err.(error), baseError.WithStack(6))
+					e = baseError.NewSystemWrap(err.(error), baseError.WithStack(6))
 				default:
-					e = baseError.NewSystemCode(ctx.ErrorCodes["System"], fmt.Sprint(err), baseError.WithStack(6))
+					e = baseError.NewSystem(fmt.Sprint(err), baseError.WithStack(6))
 				}
-
 				if ctx.Env != config.Production.String() {
 					console := fmt.Sprintf("Recover: %s\n", reflect.TypeOf(err))
 					console += fmt.Sprintf("%s\n", ctx.HandlerName())
 					console += fmt.Sprintf("%+v", e)
 					ctx.Application().Logger().Error(console)
 				}
-
-				ctx.Values().Set("error", e)
-
-				ctx.StatusCode(500)
-				ctx.StopExecution()
+				ctx.StopWithPlainError(500, e)
 			}
 		}()
 
