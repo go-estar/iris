@@ -173,8 +173,19 @@ func (ctx *Context) JSONReqForm(p interface{}) error {
 	}
 	return nil
 }
+
+func (ctx *Context) GetResponse() Response {
+	if v := ctx.Values().Get("response"); v != nil {
+		response, ok := v.(NewResponse)
+		if ok {
+			return response()
+		}
+	}
+	return ctx.Response()
+}
+
 func (ctx *Context) NewResponse(code string, message string, data ...interface{}) Response {
-	resp := ctx.Response().SetCode(code).SetMessage(message)
+	resp := ctx.GetResponse().SetCode(code).SetMessage(message)
 	if len(data) > 0 && !fieldUtil.IsNil(data[0]) {
 		resp.SetData(data[0])
 	}
@@ -182,7 +193,7 @@ func (ctx *Context) NewResponse(code string, message string, data ...interface{}
 }
 
 func (ctx *Context) NewSuccess(message string, data ...interface{}) Response {
-	resp := ctx.Response().Success().SetMessage(message)
+	resp := ctx.GetResponse().Success().SetMessage(message)
 	if len(data) > 0 && !fieldUtil.IsNil(data[0]) {
 		resp.SetData(data[0])
 	}
@@ -412,6 +423,11 @@ func (ctx *Context) TraceCtx() context.Context {
 func (ctx *Context) SetTraceCtx(traceCtx context.Context) {
 	ctx.Values().Set("traceCtx", traceCtx)
 }
+
+func (ctx *Context) SetResponse(response NewResponse) {
+	ctx.Values().Set("response", response)
+}
+
 
 var formDecoder *schema.Decoder
 
