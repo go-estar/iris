@@ -222,6 +222,7 @@ func (l *RequestLogger) Log(ctx *baseContext.Context) {
 	requestBody, _ := ctx.GetBody()
 
 	fields := []*logger.Field{
+		logger.NewField("startTime", startTime),
 		logger.NewField("method", ctx.Request().Method),
 		logger.NewField("host", ctx.Request().Host),
 		logger.NewField("uri", ctx.Request().RequestURI),
