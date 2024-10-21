@@ -9,7 +9,7 @@ require (
 	github.com/go-estar/base-error v1.0.7
 	github.com/go-estar/config v1.0.0
 	github.com/go-estar/local-time v1.0.0
-	github.com/go-estar/logger v1.0.1
+	github.com/go-estar/logger v1.0.2
 	github.com/go-estar/rate-limiter v1.0.0
 	github.com/go-estar/types v1.0.2
 	github.com/go-estar/validate v1.0.0

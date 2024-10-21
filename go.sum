@@ -55,8 +55,8 @@ github.com/go-estar/config v1.0.0 h1:TCTN7EQSsWvHk4/iU2Gi3Y8huUzdNX0d09N0Fz7ysaA
 github.com/go-estar/config v1.0.0/go.mod h1:fB/5i8csMx/LpqkdZ99tw3a79bcd7Ok9LS5MuFh1V78=
 github.com/go-estar/local-time v1.0.0 h1:Qji4i9Uhu2VVUn1w1hJuC7oeMpLF8ED0D+PdmtaOV0c=
 github.com/go-estar/local-time v1.0.0/go.mod h1:dGYIhiwo0ekqQF2G1CAYXdeSGBonEx/iCF2+Z7sVsDI=
-github.com/go-estar/logger v1.0.1 h1:/3Kc6ILWpumLogWB8W6LqdHDsxaCPWntaVQ5GJpRUXg=
-github.com/go-estar/logger v1.0.1/go.mod h1:uBDWGdTOmG3K09SpRFo0jf6HaKwcVt4RllVUn3/GuoA=
+github.com/go-estar/logger v1.0.2 h1:UlmFEksgSINODv2tusxyS6Ub/0gMhsD6RRigLbab25U=
+github.com/go-estar/logger v1.0.2/go.mod h1:uBDWGdTOmG3K09SpRFo0jf6HaKwcVt4RllVUn3/GuoA=
 github.com/go-estar/rate-limiter v1.0.0 h1:ArHOoMbY6/0on+EQ5o6o1z/4gFFJE+J1wriZZ1ZVvd8=
 github.com/go-estar/rate-limiter v1.0.0/go.mod h1:rLhMz+H+sizZHkWPNuze/G9+WZiPQlFvOpAJmNPhlBQ=
 github.com/go-estar/redis v1.0.0 h1:XDzBpqDaTdWglYtIIQM0Y3kUHqzCAnXDgGTBD6dReZo=
