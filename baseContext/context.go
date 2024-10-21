@@ -348,12 +348,12 @@ func (ctx *Context) GetQuery(name string) string {
 }
 
 func (ctx *Context) LogField(key string, value interface{}) *logger.Field {
-	return ctx.Logger.GetLogger().Field(key, value)
+	return logger.NewField(key, value)
 }
 
 func (ctx *Context) AddLogField(key string, value interface{}) {
 	logFields := ctx.GetLogFields()
-	logFields = append(logFields, ctx.Logger.GetLogger().Field(key, value))
+	logFields = append(logFields, logger.NewField(key, value))
 	ctx.Values().Set("logFields", logFields)
 }
 
@@ -427,7 +427,6 @@ func (ctx *Context) SetTraceCtx(traceCtx context.Context) {
 func (ctx *Context) SetResponse(response NewResponse) {
 	ctx.Values().Set("response", response)
 }
-
 
 var formDecoder *schema.Decoder
 

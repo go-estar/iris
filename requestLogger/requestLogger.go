@@ -222,35 +222,34 @@ func (l *RequestLogger) Log(ctx *baseContext.Context) {
 	requestBody, _ := ctx.GetBody()
 
 	fields := []*logger.Field{
-		l.logger.Field("time", startTime),
-		l.logger.Field("method", ctx.Request().Method),
-		l.logger.Field("host", ctx.Request().Host),
-		l.logger.Field("uri", ctx.Request().RequestURI),
-		l.logger.Field("path", ctx.Request().URL.Path),
-		l.logger.Field("latency", latency),
-		l.logger.Field("status", ctx.ResponseWriter().StatusCode()),
+		logger.NewField("method", ctx.Request().Method),
+		logger.NewField("host", ctx.Request().Host),
+		logger.NewField("uri", ctx.Request().RequestURI),
+		logger.NewField("path", ctx.Request().URL.Path),
+		logger.NewField("latency", latency),
+		logger.NewField("status", ctx.ResponseWriter().StatusCode()),
 	}
 
 	if l.IP {
-		fields = append(fields, l.logger.Field("ip", ctx.GetIP()))
+		fields = append(fields, logger.NewField("ip", ctx.GetIP()))
 	}
 	if l.Query {
-		fields = append(fields, l.logger.Field("query", ctx.Request().URL.RawQuery))
+		fields = append(fields, logger.NewField("query", ctx.Request().URL.RawQuery))
 	}
 	if l.Body {
-		fields = append(fields, l.logger.Field("body", requestBody))
+		fields = append(fields, logger.NewField("body", requestBody))
 	}
 	if l.UserAgent {
-		fields = append(fields, l.logger.Field("user-agent", ctx.GetHeader("user-agent")))
+		fields = append(fields, logger.NewField("user-agent", ctx.GetHeader("user-agent")))
 	}
 	if l.CheckPath(ctx.Request().URL.Path) == LevelResponse {
-		fields = append(fields, l.logger.Field("response", ctx.Recorder().Body()))
+		fields = append(fields, logger.NewField("response", ctx.Recorder().Body()))
 	}
 
 	if headerKeys := l.HeaderKeys; len(headerKeys) > 0 {
 		for _, key := range headerKeys {
 			if value := ctx.GetHeader(key); value != "" {
-				fields = append(fields, l.logger.Field(key, value))
+				fields = append(fields, logger.NewField(key, value))
 			}
 		}
 	}
@@ -258,7 +257,7 @@ func (l *RequestLogger) Log(ctx *baseContext.Context) {
 	if ctxKeys := l.ContextKeys; len(ctxKeys) > 0 {
 		for _, key := range ctxKeys {
 			if value := ctx.Values().Get(key); value != nil {
-				fields = append(fields, l.logger.Field(key, value))
+				fields = append(fields, logger.NewField(key, value))
 			}
 		}
 	}
@@ -269,31 +268,31 @@ func (l *RequestLogger) Log(ctx *baseContext.Context) {
 	if contextKeys := ctx.GetLogContextKeys(); len(contextKeys) > 0 {
 		for _, key := range contextKeys {
 			if value := ctx.Values().Get(key); value != nil {
-				fields = append(fields, l.logger.Field(key, value))
+				fields = append(fields, logger.NewField(key, value))
 			}
 		}
 	}
 
 	if session := ctx.GetSession(); session != nil {
-		fields = append(fields, l.logger.Field("session_id", session.ID()))
+		fields = append(fields, logger.NewField("session_id", session.ID()))
 		if sessionKeys := append(l.SessionKeys, ctx.GetLogSessionKeys()...); len(sessionKeys) > 0 {
 			for _, key := range sessionKeys {
 				if value := session.Get(key); value != nil {
-					fields = append(fields, l.logger.Field(key, value))
+					fields = append(fields, logger.NewField(key, value))
 				}
 			}
 		}
 	}
 
 	if requestId := ctx.Values().GetString("requestId"); requestId != "" {
-		fields = append(fields, l.logger.Field("request_id", requestId))
+		fields = append(fields, logger.NewField("request_id", requestId))
 	}
 	if traceId := ctx.Values().GetString("traceId"); traceId != "" {
-		fields = append(fields, l.logger.Field("trace_id", traceId))
+		fields = append(fields, logger.NewField("trace_id", traceId))
 	}
 
 	if ctxErr := ctx.GetErr(); ctxErr != nil {
-		fields = append(fields, l.logger.Field("error", ctxErr))
+		fields = append(fields, logger.NewField("error", ctxErr))
 		level := "error"
 		if reflect.TypeOf(ctxErr).String() == "*baseError.Error" {
 			e := ctxErr.(*baseError.Error)
@@ -301,7 +300,7 @@ func (l *RequestLogger) Log(ctx *baseContext.Context) {
 				level = "warn"
 			}
 			if len(e.Chain) > 0 {
-				fields = append(fields, l.logger.Field("error_chain", e.Chain))
+				fields = append(fields, logger.NewField("error_chain", e.Chain))
 			}
 		}
 		if level == "warn" {
