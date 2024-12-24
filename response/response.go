@@ -1,6 +1,7 @@
 package response
 
 import (
+	baseError "github.com/go-estar/base-error"
 	"github.com/go-estar/iris/baseContext"
 	"github.com/go-estar/types/fieldUtil"
 )
@@ -23,6 +24,14 @@ func (r *Response) Success() baseContext.Response {
 	return r
 }
 
+func (r *Response) Error(err *baseError.Error) baseContext.Response {
+	r.Code = err.Code
+	r.Message = err.Msg
+	r.System = err.System
+	r.Chain = err.Chain
+	return r
+}
+
 func (r *Response) SetCode(code string) baseContext.Response {
 	r.Code = code
 	return r
@@ -37,16 +46,6 @@ func (r *Response) SetData(data interface{}) baseContext.Response {
 	if !fieldUtil.IsNil(data) {
 		r.Data = data
 	}
-	return r
-}
-
-func (r *Response) SetSystem() baseContext.Response {
-	r.System = true
-	return r
-}
-
-func (r *Response) SetChain(chain ...string) baseContext.Response {
-	r.Chain = append(r.Chain, chain...)
 	return r
 }
 

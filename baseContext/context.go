@@ -34,11 +34,10 @@ type Logger interface {
 
 type Response interface {
 	Success() Response
+	Error(err *baseError.Error) Response
 	SetCode(code string) Response
 	SetMessage(message string) Response
 	SetData(data interface{}) Response
-	SetSystem() Response
-	SetChain(chain ...string) Response
 	SetRid(rid string) Response
 	ContentType() string
 	Content() interface{}
@@ -200,6 +199,14 @@ func (ctx *Context) NewSuccess(message string, data ...interface{}) Response {
 	return resp
 }
 
+func (ctx *Context) NewError(err *baseError.Error, data ...interface{}) Response {
+	resp := ctx.GetResponse().Error(err)
+	if len(data) > 0 && !fieldUtil.IsNil(data[0]) {
+		resp.SetData(data[0])
+	}
+	return resp
+}
+
 func (ctx *Context) Success(data interface{}) {
 	if !ctx.IsStopped() {
 		ctx.StopExecution()
@@ -212,7 +219,6 @@ func (ctx *Context) Success(data interface{}) {
 	if resp == nil {
 		resp = ctx.NewSuccess("", data)
 	}
-
 	if requestId := ctx.Values().GetString("requestId"); requestId != "" {
 		resp.SetRid(requestId)
 	}
@@ -230,19 +236,9 @@ func (ctx *Context) Error(err error, data ...interface{}) {
 		ctx.StopExecution()
 	}
 	e := ctx.BaseError(err)
-	message := e.Msg
-	if e.System && ctx.Env == config.Production.String() {
-		message = "system error"
-	}
-	resp := ctx.NewResponse(e.Code, message, data...)
+	resp := ctx.NewError(e, data...)
 	if requestId := ctx.Values().GetString("requestId"); requestId != "" {
 		resp.SetRid(requestId)
-	}
-	if e.System {
-		resp.SetSystem()
-	}
-	if len(e.Chain) > 0 {
-		resp.SetChain(e.Chain...)
 	}
 	if resp.ContentType() == "text" {
 		ctx.Text(resp.Content().(string))
@@ -259,9 +255,6 @@ func (ctx *Context) ErrorView(err error, data ...interface{}) {
 	}
 	e := ctx.BaseError(err)
 	message := e.Msg
-	if e.System && ctx.Env == config.Production.String() {
-		message = "system error"
-	}
 	if requestId := ctx.Values().GetString("requestId"); requestId != "" {
 		message += " rid:" + requestId
 	}
