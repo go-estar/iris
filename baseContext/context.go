@@ -16,6 +16,7 @@ import (
 	"github.com/iris-contrib/schema"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/sessions"
+	"github.com/thoas/go-funk"
 	"reflect"
 	"strings"
 )
@@ -68,47 +69,53 @@ func New(env string, logger Logger, opts ...Option) {
 }
 
 func WithApplicationName(val string) Option {
-	return func(opts *Context) {
-		opts.ApplicationName = val
+	return func(ctx *Context) {
+		ctx.ApplicationName = val
 	}
 }
 
 func WithResponse(val NewResponse) Option {
-	return func(opts *Context) {
-		opts.Response = val
+	return func(ctx *Context) {
+		ctx.Response = val
 	}
 }
 
 func WithViewError(val string) Option {
-	return func(opts *Context) {
-		opts.ViewError = val
+	return func(ctx *Context) {
+		ctx.ViewError = val
 	}
 }
 
 func WithSystemErrorCode(val string) Option {
-	return func(opts *Context) {
-		if opts.ErrorCodes == nil {
-			opts.ErrorCodes = make(map[string]string)
+	return func(ctx *Context) {
+		if ctx.ErrorCodes == nil {
+			ctx.ErrorCodes = make(map[string]string)
 		}
-		opts.ErrorCodes["System"] = val
+		ctx.ErrorCodes["System"] = val
 	}
 }
 
 func WithReadParamsErrorCode(val string) Option {
-	return func(opts *Context) {
-		if opts.ErrorCodes == nil {
-			opts.ErrorCodes = make(map[string]string)
+	return func(ctx *Context) {
+		if ctx.ErrorCodes == nil {
+			ctx.ErrorCodes = make(map[string]string)
 		}
-		opts.ErrorCodes["ReadParams"] = val
+		ctx.ErrorCodes["ReadParams"] = val
 	}
 }
 
 func WithValidationErrorCode(val string) Option {
-	return func(opts *Context) {
-		if opts.ErrorCodes == nil {
-			opts.ErrorCodes = make(map[string]string)
+	return func(ctx *Context) {
+		if ctx.ErrorCodes == nil {
+			ctx.ErrorCodes = make(map[string]string)
 		}
-		opts.ErrorCodes["Validation"] = val
+		ctx.ErrorCodes["Validation"] = val
+	}
+}
+
+func WithSystemErrorTypes(val ...string) Option {
+	return func(ctx *Context) {
+		ctx.SystemErrorTypes = append(ctx.SystemErrorTypes, val...)
 	}
 }
 
@@ -116,12 +123,13 @@ type NewResponse func() Response
 
 type Context struct {
 	iris.Context
-	Env             string
-	ApplicationName string
-	Logger          Logger
-	Response        NewResponse
-	ViewError       string
-	ErrorCodes      map[string]string
+	Env              string
+	ApplicationName  string
+	Logger           Logger
+	Response         NewResponse
+	ViewError        string
+	ErrorCodes       map[string]string
+	SystemErrorTypes []string
 }
 
 const irisSessionContextKey = "iris.session"
@@ -302,7 +310,12 @@ func (ctx *Context) BaseError(err error) (e *baseError.Error) {
 		console += fmt.Sprintf("%+v", err)
 		ctx.Application().Logger().Error(console)
 	}
-	return baseError.NewSystemCodeWrap(ctx.ErrorCodes["System"], err)
+
+	e = baseError.NewSystemCodeWrap(ctx.ErrorCodes["System"], err)
+	if errorType == "proto.RedisError" || errorType == "*mysql.withStack" || errorType == "*mysql.MySQLError" || funk.ContainsString(ctx.SystemErrorTypes, errorType) {
+		e.Msg = "系统错误"
+	}
+	return e
 }
 
 func (ctx *Context) GetIP() string {

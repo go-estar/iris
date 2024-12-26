@@ -12,12 +12,13 @@ var baseContext *Context
 
 var contextPool = sync.Pool{New: func() interface{} {
 	return &Context{
-		Env:             baseContext.Env,
-		ApplicationName: baseContext.ApplicationName,
-		Logger:          baseContext.Logger,
-		Response:        baseContext.Response,
-		ViewError:       baseContext.ViewError,
-		ErrorCodes:      baseContext.ErrorCodes,
+		Env:              baseContext.Env,
+		ApplicationName:  baseContext.ApplicationName,
+		Logger:           baseContext.Logger,
+		Response:         baseContext.Response,
+		ViewError:        baseContext.ViewError,
+		ErrorCodes:       baseContext.ErrorCodes,
+		SystemErrorTypes: baseContext.SystemErrorTypes,
 	}
 }}
 
